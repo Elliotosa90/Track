@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpressTrack - Package Tracking</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, 'Segoe UI', 'Red Hat Display', Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            color: #222;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        a { color: #d40511; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .top-bar {
+            background: #d40511;
+            color: #fff;
+            font-size: 13px;
+            padding: 6px 0;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        header {
+            background: #fff;
+            border-bottom: 2px solid #ffcd00;
+            padding: 16px 0 12px;
+        }
+        .header-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 26px;
+            font-weight: 700;
+            color: #d40511;
+        }
+        .logo .icon {
+            width: 40px;
+            height: 40px;
+            background: #d40511;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 900;
+            font-size: 18px;
+        }
+        .logo span { color: #222; }
+        .tagline {
+            font-size: 13px;
+            color: #666;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        nav {
+            background: #222;
+            color: #fff;
+        }
+        nav ul {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+            list-style: none;
+            display: flex;
+            gap: 0;
+        }
+        nav ul li {
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-right: 1px solid #444;
+        }
+        nav ul li:hover { background: #d40511; }
+        nav ul li.active { background: #d40511; }
+        nav ul li:first-child { border-left: 1px solid #444; }
+
+        .main-wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+            width: 100%;
+        }
+
+        .tracking-hero {
+            background: #d40511;
+            border-radius: 12px;
+            padding: 40px 30px;
+            color: #fff;
+            margin-bottom: 30px;
+        }
+        .tracking-hero h1 { font-size: 28px; margin-bottom: 6px; }
+        .tracking-hero p { font-size: 15px; opacity: 0.9; margin-bottom: 24px; }
+        .track-form {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            max-width: 650px;
+        }
+        .track-form input {
+            flex: 1;
+            min-width: 220px;
+            padding: 14px 18px;
+            font-size: 15px;
+            border: none;
+            border-radius: 6px;
+            outline: none;
+            background: #fff;
+        }
+        .track-form input:focus { box-shadow: 0 0 0 3px rgba(255,205,0,0.6); }
+        .track-form button {
+            padding: 14px 32px;
+            background: #ffcd00;
+            color: #222;
+            font-weight: 700;
+            font-size: 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .track-form button:hover { background: #e6b800; }
+        .quick-links { margin-top: 16px; font-size: 13px; }
+        .quick-links a { color: #ffcd00; margin-right: 18px; }
+
+        #result-area { margin-bottom: 30px; }
+        .result-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .result-header {
+            background: #f8f8f8;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .result-header .tn { font-weight: 700; font-size: 18px; }
+        .result-header .tn small { font-weight: 400; color: #888; font-size: 13px; }
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .status-badge.delivered { background: #e6f7e6; color: #1a7d1a; }
+        .status-badge.in_transit { background: #fff3cd; color: #856404; }
+        .status-badge.processing { background: #e0e7ff; color: #3730a3; }
+        .status-badge.pending { background: #f3f3f3; color: #666; }
+        .status-badge.exception { background: #ffe0e0; color: #a00; }
+
+        .result-body { padding: 24px; }
+        .timeline { position: relative; padding-left: 28px; }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 4px;
+            bottom: 4px;
+            width: 2px;
+            background: #ddd;
+        }
+        .tl-item { position: relative; padding: 0 0 24px 20px; }
+        .tl-item:last-child { padding-bottom: 0; }
+        .tl-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 4px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #d40511;
+            border: 3px solid #fff;
+            box-shadow: 0 0 0 2px #d40511;
+        }
+        .tl-item.completed::before { background: #1a7d1a; box-shadow: 0 0 0 2px #1a7d1a; }
+        .tl-item .tl-date { font-size: 12px; color: #888; margin-bottom: 2px; }
+        .tl-item .tl-title { font-weight: 600; font-size: 15px; }
+        .tl-item .tl-desc { font-size: 13px; color: #555; margin-top: 2px; }
+        .tl-item .tl-loc { font-size: 12px; color: #888; margin-top: 1px; }
+
+        .ship-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+        }
+        .ship-info .label { color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .ship-info .value { font-weight: 500; }
+
+        .not-found {
+            background: #fff;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .not-found h2 { color: #d40511; margin-bottom: 8px; }
+        .not-found p { color: #666; }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 12px;
+        }
+        .tool-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .tool-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .tool-card .emoji { font-size: 32px; margin-bottom: 8px; }
+        .tool-card h3 { font-size: 15px; margin-bottom: 4px; }
+        .tool-card p { font-size: 12px; color: #888; }
+
+        #admin-panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        .admin-header {
+            background: #222;
+            color: #fff;
+            padding: 16px 24px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .admin-header .logout-btn {
+            background: #d40511;
+            color: #fff;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .admin-body { padding: 24px; }
+
+        .admin-login {
+            max-width: 400px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        }
+        .admin-login h2 { margin-bottom: 20px; color: #222; }
+        .admin-login input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .admin-login button {
+            width: 100%;
+            padding: 12px;
+            background: #d40511;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .admin-login button:hover { background: #b0050e; }
+        .admin-login .error { font-size: 13px; margin-top: 8px; color: #d40511; }
+        .admin-login .info { font-size: 13px; margin-top: 8px; color: #666; }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .admin-table th {
+            background: #f8f8f8;
+            text-align: left;
+            padding: 12px 14px;
+            border-bottom: 2px solid #ddd;
+            font-weight: 600;
+        }
+        .admin-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #eee;
+            vertical-align: middle;
+        }
+        .admin-table tr:hover td { background: #fafafa; }
+        .admin-table select {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .admin-table .save-btn {
+            padding: 5px 14px;
+            background: #d40511;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .admin-table .save-btn:hover { background: #b0050e; }
+        .admin-table .del-btn {
+            padding: 5px 10px;
+            background: #a00;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 4px;
+        }
+        .admin-table .del-btn:hover { background: #800; }
+
+        .add-shipment {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .add-shipment h3 { margin-bottom: 12px; font-size: 16px; }
+        .add-shipment .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .add-shipment input, .add-shipment select {
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            flex: 1;
+            min-width: 150px;
+        }
+        .add-shipment .gen-btn {
+            padding: 10px 16px;
+            background: #555;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .add-shipment .gen-btn:hover { background: #444; }
+        .add-shipment button[type="button"] {
+            padding: 10px 24px;
+            background: #ffcd00;
+            color: #222;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .add-shipment button[type="button"]:hover { background: #e6b800; }
+
+        /* Timeline event editor */
+        .event-editor {
+            background: #fafafa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 12px;
+        }
+        .event-editor h4 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #444;
+        }
+        .event-editor .form-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .event-editor input, .event-editor select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            flex: 1;
+            min-width: 120px;
+        }
+        .event-editor .add-event-btn {
+            padding: 8px 18px;
+            background: #d40511;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .event-editor .add-event-btn:hover { background: #b0050e; }
+
+        .event-list {
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        .event-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            gap: 8px;
+        }
+        .event-row:last-child { border-bottom: none; }
+        .event-row .evt-info { flex: 1; min-width: 0; }
+        .event-row .evt-info strong { display: block; font-size: 13px; }
+        .event-row .evt-info span { display: block; font-size: 11px; color: #888; }
+        .event-row .del-evt-btn {
+            padding: 3px 8px;
+            background: #a00;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .event-row .del-evt-btn:hover { background: #800; }
+
+        footer {
+            background: #222;
+            color: #aaa;
+            font-size: 12px;
+            padding: 24px 0;
+            margin-top: auto;
+        }
+        .footer-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .hidden { display: none !important; }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; color: #222; }
+
+        @media (max-width: 640px) {
+            .tracking-hero { padding: 24px 16px; }
+            .tracking-hero h1 { font-size: 22px; }
+            .track-form input { min-width: 100%; }
+            .track-form button { width: 100%; }
+            .ship-info { grid-template-columns: 1fr; }
+            nav ul li { padding: 10px 14px; font-size: 13px; }
+            .admin-table { font-size: 12px; }
+            .admin-table th, .admin-table td { padding: 8px 6px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">⚡ ExpressTrack — Fast, reliable global shipping since 2012</div>
+
+<header>
+    <div class="header-inner">
+        <div class="logo">
+            <div class="icon">ET</div>
+            Express<span>Track</span>
+        </div>
+        <div class="tagline">Global Shipping Solutions</div>
+    </div>
+</header>
+
+<nav>
+    <ul>
+        <li class="active" onclick="showTab('track')">Track & Trace</li>
+        <li onclick="showTab('admin')">Admin</li>
+    </ul>
+</nav>
+
+<div class="main-wrap">
+
+    <!-- TRACK TAB -->
+    <div id="tab-track">
+        <div class="tracking-hero">
+            <h1>Track & Trace</h1>
+            <p>Enter your tracking number to see the latest status of your shipment.</p>
+            <div class="track-form">
+                <input type="text" id="track-input" placeholder="e.g. ET-2024-001234" maxlength="30" autocomplete="off">
+                <button onclick="trackShipment()">Track Now</button>
+            </div>
+            <div class="quick-links">
+                <a href="#" onclick="fillExample(); return false;">Try an example: ET-2024-001234</a>
+                <a href="#" onclick="fillExample2(); return false;">ET-2025-005678</a>
+            </div>
+        </div>
+
+        <div id="result-area"></div>
+
+        <div class="section-title">Other Services</div>
+        <div class="tools-grid">
+            <div class="tool-card"><div class="emoji">📦</div><h3>Schedule a Pickup</h3><p>Arrange a courier collection</p></div>
+            <div class="tool-card"><div class="emoji">📍</div><h3>Find a Drop-off Point</h3><p>Nearest service locations</p></div>
+            <div class="tool-card"><div class="emoji">⏱️</div><h3>Delivery Time Estimator</h3><p>Calculate transit times</p></div>
+            <div class="tool-card"><div class="emoji">📄</div><h3>Invoice & Documents</h3><p>Download shipping docs</p></div>
+        </div>
+    </div>
+
+    <!-- ADMIN TAB -->
+    <div id="tab-admin" class="hidden">
+        <div id="admin-login-box" class="admin-login">
+            <h2>Admin Access</h2>
+            <input type="text" id="admin-user" placeholder="Username" autocomplete="off">
+            <input type="password" id="admin-pass" placeholder="Password">
+            <button onclick="adminLogin()">Sign In</button>
+            <div id="admin-msg" class="info">🔐 First-time setup: enter any username & password to create your admin account.</div>
+        </div>
+
+        <div id="admin-dashboard" class="hidden">
+            <div id="admin-panel">
+                <div class="admin-header">
+                    <span>📋 Shipment Management Dashboard</span>
+                    <button class="logout-btn" onclick="adminLogout()">Logout</button>
+                </div>
+                <div class="admin-body">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Tracking #</th>
+                                <th>Recipient</th>
+                                <th>Status</th>
+                                <th>Events</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-tbody"></tbody>
+                    </table>
+
+                    <div class="add-shipment">
+                        <h3>➕ Add New Shipment</h3>
+                        <div class="form-row">
+                            <input type="text" id="new-tracking" placeholder="Tracking # (e.g. ET-2025-009999)">
+                            <button type="button" class="gen-btn" onclick="generateTracking()">🎲 Generate</button>
+                            <button type="button" class="gen-btn" onclick="generateFullShipment()" style="background:#777;">🎲 Random All</button>
+                        </div>
+                        <div class="form-row">
+                            <input type="text" id="new-recipient" placeholder="Recipient">
+                            <input type="text" id="new-origin" placeholder="Origin (e.g. Frankfurt, DE)">
+                            <input type="text" id="new-dest" placeholder="Destination">
+                        </div>
+                        <button type="button" onclick="addShipment()">Create Shipment</button>
+
+                        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #eee;">
+                            <div style="font-size:14px;font-weight:600;margin-bottom:8px;">📦 Bulk Generate Random Shipments</div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                                <button type="button" onclick="bulkGenerate(5)" style="padding:10px 20px;background:#555;color:#fff;font-weight:600;border:none;border-radius:6px;cursor:pointer;">Generate 5</button>
+                                <button type="button" onclick="bulkGenerate(20)" style="padding:10px 20px;background:#444;color:#fff;font-weight:600;border:none;border-radius:6px;cursor:pointer;">Generate 20</button>
+                                <button type="button" onclick="bulkGenerate(50)" style="padding:10px 20px;background:#333;color:#fff;font-weight:600;border:none;border-radius:6px;cursor:pointer;">Generate 50</button>
+                                <button type="button" onclick="bulkGenerate(100)" style="padding:10px 20px;background:#d40511;color:#fff;font-weight:600;border:none;border-radius:6px;cursor:pointer;">Generate 100</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<footer>
+    <div class="footer-inner">
+        <span>© 2025 ExpressTrack — All rights reserved.</span>
+        <span>Need help? Contact Support</span>
+    </div>
+</footer>
+
+<script>
+// ============================================================
+// DEFAULT SHIPMENT DATA
+// ============================================================
+const DEFAULT_DATA = [
+    {
+        tn: 'ET-2024-001234',
+        recipient: 'John Miller',
+        origin: 'New York, USA',
+        destination: 'Berlin, Germany',
+        status: 'delivered',
+        events: [
+            { date: '2024-11-18 09:15', title: 'Delivered', desc: 'Package delivered to recipient', loc: 'Berlin, Germany' },
+            { date: '2024-11-17 14:30', title: 'Out for Delivery', desc: 'With delivery courier', loc: 'Berlin, Germany' },
+            { date: '2024-11-16 08:00', title: 'Arrived at Destination Facility', desc: 'Customs clearance completed', loc: 'Berlin, Germany' },
+            { date: '2024-11-14 22:10', title: 'Departed from Transit Hub', desc: 'In transit to destination', loc: 'Frankfurt, Germany' },
+            { date: '2024-11-12 06:45', title: 'Processed at Transit Hub', desc: 'Package arrived at hub', loc: 'Frankfurt, Germany' },
+            { date: '2024-11-10 18:30', title: 'Departed from Origin', desc: 'Package left the facility', loc: 'New York, USA' },
+            { date: '2024-11-09 11:00', title: 'Package Received', desc: 'Shipping label created', loc: 'New York, USA' },
+        ]
+    },
+    {
+        tn: 'ET-2025-005678',
+        recipient: 'Sarah Chen',
+        origin: 'Shanghai, CN',
+        destination: 'London, UK',
+        status: 'in_transit',
+        events: [
+            { date: '2025-01-20 16:20', title: 'Departed from Transit Hub', desc: 'In transit to destination', loc: 'Dubai, UAE' },
+            { date: '2025-01-19 09:10', title: 'Processed at Transit Hub', desc: 'Package arrived at hub', loc: 'Dubai, UAE' },
+            { date: '2025-01-17 13:40', title: 'Departed from Origin', desc: 'Package left the facility', loc: 'Shanghai, CN' },
+            { date: '2025-01-16 08:30', title: 'Package Received', desc: 'Shipping label created', loc: 'Shanghai, CN' },
+        ]
+    },
+    {
+        tn: 'ET-2025-009999',
+        recipient: 'Alex Rivera',
+        origin: 'Mexico City, MX',
+        destination: 'Madrid, ES',
+        status: 'processing',
+        events: [
+            { date: '2025-02-01 10:00', title: 'Package Received', desc: 'Shipping label created', loc: 'Mexico City, MX' },
+        ]
+    },
+];
+
+function loadData() {
+    const raw = localStorage.getItem('et_shipments');
+    if (raw) {
+        try { return JSON.parse(raw); } catch(e) {}
+    }
+    localStorage.setItem('et_shipments', JSON.stringify(DEFAULT_DATA));
+    return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+
+function saveData(data) {
+    localStorage.setItem('et_shipments', JSON.stringify(data));
+}
+
+// ============================================================
+// AUTH — SHA-256 via native Web Crypto API
+// ============================================================
+async function sha256(str) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function isAdminSetupComplete() {
+    return localStorage.getItem('et_admin_hash') !== null;
+}
+
+async function setupAdmin(username, password) {
+    const hash = await sha256(username + ':' + password);
+    localStorage.setItem('et_admin_hash', hash);
+    localStorage.setItem('et_admin_username', username);
+}
+
+async function verifyAdmin(username, password) {
+    const storedHash = localStorage.getItem('et_admin_hash');
+    if (!storedHash) return false;
+    const inputHash = await sha256(username + ':' + password);
+    return inputHash === storedHash;
+}
+
+// ============================================================
+// TRACKING (Public)
+// ============================================================
+function trackShipment() {
+    const tn = document.getElementById('track-input').value.trim();
+    if (!tn) {
+        document.getElementById('result-area').innerHTML = '<div class="not-found"><h2>⚠️ Please enter a tracking number</h2><p>Enter the tracking number shown on your shipping confirmation.</p></div>';
+        return;
+    }
+
+    const data = loadData();
+    const shipment = data.find(s => s.tn.toLowerCase() === tn.toLowerCase());
+
+    if (!shipment) {
+        document.getElementById('result-area').innerHTML = `<div class="not-found"><h2>🔍 No Results Found</h2><p>Tracking number <strong>${escHtml(tn)}</strong> was not found.</p><p style="margin-top:12px;font-size:13px;color:#888;">Tip: Try <a href="#" onclick="fillExample();return false;">ET-2024-001234</a> or <a href="#" onclick="fillExample2();return false;">ET-2025-005678</a></p></div>`;
+        return;
+    }
+
+    renderTrackingResult(shipment);
+}
+
+function renderTrackingResult(shipment) {
+    const statusMap = {
+        delivered: { label: 'Delivered', cls: 'delivered' },
+        in_transit: { label: 'In Transit', cls: 'in_transit' },
+        processing: { label: 'Processing', cls: 'processing' },
+        pending: { label: 'Pending', cls: 'pending' },
+        exception: { label: 'Exception', cls: 'exception' },
+    };
+    const st = statusMap[shipment.status] || statusMap.pending;
+
+    const eventsHtml = shipment.events.slice().reverse().map((ev, idx) => {
+        const completed = (idx === 0) ? 'completed' : '';
+        return `
+            <div class="tl-item ${completed}">
+                <div class="tl-date">${escHtml(ev.date)}</div>
+                <div class="tl-title">${escHtml(ev.title)}</div>
+                <div class="tl-desc">${escHtml(ev.desc)}</div>
+                <div class="tl-loc">📍 ${escHtml(ev.loc)}</div>
+            </div>
+        `;
+    }).join('');
+
+    const html = `
+        <div class="result-card">
+            <div class="result-header">
+                <div class="tn">${escHtml(shipment.tn)} <small>Tracking Number</small></div>
+                <span class="status-badge ${st.cls}">${st.label}</span>
+            </div>
+            <div class="result-body">
+                <div class="timeline">${eventsHtml}</div>
+                <div class="ship-info">
+                    <div><div class="label">Recipient</div><div class="value">${escHtml(shipment.recipient)}</div></div>
+                    <div><div class="label">Destination</div><div class="value">${escHtml(shipment.destination)}</div></div>
+                    <div><div class="label">Origin</div><div class="value">${escHtml(shipment.origin)}</div></div>
+                    <div><div class="label">Events</div><div class="value">${shipment.events.length} tracking updates</div></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('result-area').innerHTML = html;
+}
+
+// ============================================================
+// ADMIN LOGIN / LOGOUT
+// ============================================================
+async function adminLogin() {
+    const u = document.getElementById('admin-user').value.trim();
+    const p = document.getElementById('admin-pass').value.trim();
+    const msg = document.getElementById('admin-msg');
+
+    if (!u || !p) {
+        msg.className = 'error';
+        msg.textContent = '❌ Please enter both username and password.';
+        return;
+    }
+
+    if (!isAdminSetupComplete()) {
+        await setupAdmin(u, p);
+        msg.className = 'info';
+        msg.textContent = '';
+        document.getElementById('admin-login-box').classList.add('hidden');
+        document.getElementById('admin-dashboard').classList.remove('hidden');
+        renderAdminTable();
+        return;
+    }
+
+    const valid = await verifyAdmin(u, p);
+    if (valid) {
+        msg.textContent = '';
+        document.getElementById('admin-login-box').classList.add('hidden');
+        document.getElementById('admin-dashboard').classList.remove('hidden');
+        renderAdminTable();
+    } else {
+        msg.className = 'error';
+        msg.textContent = '❌ Invalid username or password.';
+    }
+}
+
+function adminLogout() {
+    document.getElementById('admin-login-box').classList.remove('hidden');
+    document.getElementById('admin-dashboard').classList.add('hidden');
+    document.getElementById('admin-user').value = '';
+    document.getElementById('admin-pass').value = '';
+    const msg = document.getElementById('admin-msg');
+    msg.className = 'info';
+    msg.textContent = '👋 You have been logged out.';
+}
+
+// ============================================================
+// ADMIN TABLE
+// ============================================================
+function renderAdminTable() {
+    const data = loadData();
+    const tbody = document.getElementById('admin-tbody');
+
+    tbody.innerHTML = data.map(s => {
+        const lastEvent = s.events.length > 0 ? s.events[s.events.length - 1] : null;
+        const lastEventStr = lastEvent ? `${escHtml(lastEvent.date)} - ${escHtml(lastEvent.title)}` : 'No events';
+        return `
+            <tr data-tn="${escHtml(s.tn)}">
+                <td><strong>${escHtml(s.tn)}</strong></td>
+                <td>${escHtml(s.recipient)}<br><span style="font-size:11px;color:#888;">${escHtml(s.origin)} → ${escHtml(s.destination)}</span></td>
+                <td>
+                    <select class="status-select" onchange="quickUpdateStatus('${escHtml(s.tn)}', this)">
+                        <option value="pending" ${s.status==='pending'?'selected':''}>Pending</option>
+                        <option value="processing" ${s.status==='processing'?'selected':''}>Processing</option>
+                        <option value="in_transit" ${s.status==='in_transit'?'selected':''}>In Transit</option>
+                        <option value="delivered" ${s.status==='delivered'?'selected':''}>Delivered</option>
+                        <option value="exception" ${s.status==='exception'?'selected':''}>Exception</option>
+                    </select>
+                </td>
+                <td>
+                    <span style="font-size:12px;color:#888;">${s.events.length} events</span>
+                    <button class="save-btn" onclick="toggleEventEditor('${escHtml(s.tn)}')" style="margin-left:6px;">📋 Events</button>
+                    <div id="events-${escHtml(s.tn)}" class="hidden" style="margin-top:8px;">
+                        <div class="event-editor">
+                            <h4>Add Tracking Event</h4>
+                            <div class="form-row">
+                                <input type="text" id="evt-title-${escHtml(s.tn)}" placeholder="Title (e.g. Out for Delivery)" style="flex:2;">
+                                <input type="text" id="evt-loc-${escHtml(s.tn)}" placeholder="Location (e.g. Berlin, Germany)" style="flex:1;">
+                            </div>
+                            <div class="form-row">
+                                <input type="text" id="evt-desc-${escHtml(s.tn)}" placeholder="Description (e.g. With delivery courier)" style="flex:2;">
+                                <input type="datetime-local" id="evt-date-${escHtml(s.tn)}" style="flex:1;">
+                            </div>
+                            <button class="add-event-btn" onclick="addEvent('${escHtml(s.tn)}')">➕ Add Event</button>
+
+                            <div class="event-list" id="evt-list-${escHtml(s.tn)}">
+                                ${s.events.slice().reverse().map((ev, idx) => `
+                                    <div class="event-row">
+                                        <div class="evt-info">
+                                            <strong>${escHtml(ev.title)}</strong>
+                                            <span>${escHtml(ev.date)} — ${escHtml(ev.loc)} — ${escHtml(ev.desc)}</span>
+                                        </div>
+                                        <button class="del-evt-btn" onclick="deleteEvent('${escHtml(s.tn)}', ${idx})">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <button class="save-btn" onclick="renderAdminTable()" style="background:#555;">🔄 Refresh</button>
+                    <button class="del-btn" onclick="deleteShipment('${escHtml(s.tn)}')">🗑 Delete</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ============================================================
+// QUICK STATUS UPDATE
+// ============================================================
+function quickUpdateStatus(tn, select) {
+    const newStatus = select.value;
+    const data = loadData();
+    const shipment = data.find(s => s.tn === tn);
+    if (!shipment) return;
+
+    const oldStatus = shipment.status;
+    shipment.status = newStatus;
+
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    const statusLabels = {
+        pending: 'Shipment Created',
+        processing: 'Processing',
+        in_transit: 'In Transit',
+        delivered: 'Delivered',
+        exception: 'Exception Reported'
+    };
+
+    shipment.events.push({
+        date: dateStr,
+        title: statusLabels[newStatus] || newStatus,
+        desc: `Status updated from "${oldStatus.replace('_',' ')}" to "${newStatus.replace('_',' ')}"`,
+        loc: shipment.destination || 'N/A'
+    });
+
+    saveData(data);
+    renderAdminTable();
+}
+
+// ============================================================
+// EVENT EDITOR TOGGLE
+// ============================================================
+function toggleEventEditor(tn) {
+    const el = document.getElementById('events-' + tn);
+    if (el) el.classList.toggle('hidden');
+}
+
+// ============================================================
+// ADD EVENT
+// ============================================================
+function addEvent(tn) {
+    const title = document.getElementById('evt-title-' + tn).value.trim();
+    const loc = document.getElementById('evt-loc-' + tn).value.trim();
+    const desc = document.getElementById('evt-desc-' + tn).value.trim();
+    const dateInput = document.getElementById('evt-date-' + tn).value;
+
+    if (!title || !loc) {
+        alert('Please enter at least a title and location for the event.');
+        return;
+    }
+
+    let dateStr;
+    if (dateInput) {
+        // Convert datetime-local to display format
+        const d = new Date(dateInput);
+        const pad = n => String(n).padStart(2, '0');
+        dateStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } else {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+
+    const data = loadData();
+    const shipment = data.find(s => s.tn === tn);
+    if (!shipment) return;
+
+    shipment.events.push({
+        date: dateStr,
+        title: title,
+        desc: desc || 'No additional details',
+        loc: loc
+    });
+
+    // Auto-update status based on event title
+    const lower = title.toLowerCase();
+    if (lower.includes('delivered')) shipment.status = 'delivered';
+    else if (lower.includes('out for delivery')) shipment.status = 'in_transit';
+    else if (lower.includes('departed') || lower.includes('in transit')) shipment.status = 'in_transit';
+    else if (lower.includes('arrived') || lower.includes('processed')) shipment.status = 'in_transit';
+    else if (lower.includes('exception') || lower.includes('delay')) shipment.status = 'exception';
+    else if (lower.includes('received') || lower.includes('created')) shipment.status = 'processing';
+
+    saveData(data);
+    renderAdminTable();
+
+    // Clear inputs
+    document.getElementById('evt-title-' + tn).value = '';
+    document.getElementById('evt-loc-' + tn).value = '';
+    document.getElementById('evt-desc-' + tn).value = '';
+    document.getElementById('evt-date-' + tn).value = '';
+}
+
+// ============================================================
+// DELETE EVENT
+// ============================================================
+function deleteEvent(tn, displayIndex) {
+    if (!confirm('Delete this tracking event?')) return;
+
+    const data = loadData();
+    const shipment = data.find(s => s.tn === tn);
+    if (!shipment) return;
+
+    // displayIndex is from reversed array, so we need actual index
+    const actualIndex = shipment.events.length - 1 - displayIndex;
+    if (actualIndex < 0 || actualIndex >= shipment.events.length) return;
+
+    shipment.events.splice(actualIndex, 1);
+    saveData(data);
+    renderAdminTable();
+}
+
+// ============================================================
+// DELETE SHIPMENT
+// ============================================================
+function deleteShipment(tn) {
+    if (!confirm(`Are you sure you want to delete shipment ${tn}? This cannot be undone.`)) return;
+
+    const data = loadData();
+    const idx = data.findIndex(s => s.tn === tn);
+    if (idx === -1) return;
+
+    data.splice(idx, 1);
+    saveData(data);
+    renderAdminTable();
+}
+
+// ============================================================
+// ADD SHIPMENT
+// ============================================================
+function addShipment() {
+    const tn = document.getElementById('new-tracking').value.trim();
+    const recipient = document.getElementById('new-recipient').value.trim();
+    const origin = document.getElementById('new-origin').value.trim();
+    const dest = document.getElementById('new-dest').value.trim();
+
+    if (!tn || !recipient || !origin || !dest) {
+        alert('Please fill in all fields.');
+        return;
+    }
+
+    const data = loadData();
+    if (data.find(s => s.tn.toLowerCase() === tn.toLowerCase())) {
+        alert('A shipment with this tracking number already exists.');
+        return;
+    }
+
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+    data.push({
+        tn, recipient, origin,
+        destination: dest,
+        status: 'pending',
+        events: [{ date: dateStr, title: 'Shipment Created', desc: 'Shipping label created', loc: origin }]
+    });
+
+    saveData(data);
+    renderAdminTable();
+
+    document.getElementById('new-tracking').value = '';
+    document.getElementById('new-recipient').value = '';
+    document.getElementById('new-origin').value = '';
+    document.getElementById('new-dest').value = '';
+
+    alert('✅ Shipment created successfully!');
+}
+
+// ============================================================
+// TRACKING NUMBER GENERATOR
+// ============================================================
+function generateTracking() {
+    const formats = [
+        () => Array.from({length: 12}, () => Math.floor(Math.random() * 10)).join(''),
+        () => {
+            const year = 2024 + Math.floor(Math.random() * 3);
+            const num = String(Math.floor(Math.random() * 999999)).padStart(6, '0');
+            return `ET-${year}-${num}`;
+        },
+        () => {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let tn = '1Z';
+            tn += chars[Math.floor(Math.random() * 26)];
+            tn += chars[Math.floor(Math.random() * 26)];
+            tn += chars[Math.floor(Math.random() * 26)];
+            tn += Math.floor(Math.random() * 10);
+            tn += Math.floor(Math.random() * 10);
+            tn += Math.floor(Math.random() * 10);
+            tn += chars[Math.floor(Math.random() * 26)];
+            tn += chars[Math.floor(Math.random() * 26)];
+            for (let i = 0; i < 7; i++) tn += Math.floor(Math.random() * 10);
+            return tn;
+        },
+        () => {
+            const len = 12 + Math.floor(Math.random() * 4);
+            return Array.from({length: len}, () => Math.floor(Math.random() * 10)).join('');
+        },
+        () => 'ET' + Array.from({length: 10}, () => Math.floor(Math.random() * 10)).join(''),
+        () => {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let tn = '';
+            tn += letters[Math.floor(Math.random() * 26)];
+            tn += letters[Math.floor(Math.random() * 26)];
+            tn += Array.from({length: 9}, () => Math.floor(Math.random() * 10)).join('');
+            tn += letters[Math.floor(Math.random() * 26)];
+            tn += letters[Math.floor(Math.random() * 26)];
+            return tn;
+        }
+    ];
+
+    const format = formats[Math.floor(Math.random() * formats.length)];
+    document.getElementById('new-tracking').value = format();
+}
+
+function generateFullShipment() {
+    const firstNames = ['James','Maria','David','Ana','Michael','Sophie','Carlos','Emma','Wei','Fatima','Olga','Kenji','Aisha','Liam','Yuki','Hannah','Lucas','Zara','Ethan','Mia'];
+    const lastNames = ['Smith','Garcia','Johnson','Martinez','Brown','Lee','Wilson','Silva','Kim','Patel','Mueller','Chen','Rossi','Ivanov','Sato','Johansson','Okafor','Dubois','Andersen','Kowalski'];
+    const routes = [
+        { origin: 'New York, USA', dest: 'London, UK' },
+        { origin: 'Los Angeles, USA', dest: 'Tokyo, JP' },
+        { origin: 'Frankfurt, DE', dest: 'Shanghai, CN' },
+        { origin: 'Dubai, AE', dest: 'Sydney, AU' },
+        { origin: 'Singapore, SG', dest: 'Mumbai, IN' },
+        { origin: 'Paris, FR', dest: 'Toronto, CA' },
+        { origin: 'Amsterdam, NL', dest: 'Sao Paulo, BR' },
+        { origin: 'Hong Kong, HK', dest: 'Seoul, KR' },
+        { origin: 'Madrid, ES', dest: 'Buenos Aires, AR' },
+        { origin: 'Chicago, USA', dest: 'Mexico City, MX' },
+        { origin: 'Milan, IT', dest: 'Cairo, EG' },
+        { origin: 'Stockholm, SE', dest: 'Bangkok, TH' },
+    ];
+
+    const name = firstNames[Math.floor(Math.random() * firstNames.length)] + ' ' + lastNames[Math.floor(Math.random() * lastNames.length)];
+    const route = routes[Math.floor(Math.random() * routes.length)];
+
+    generateTracking();
+    document.getElementById('new-recipient').value = name;
+    document.getElementById('new-origin').value = route.origin;
+    document.getElementById('new-dest').value = route.dest;
+}
+
+function bulkGenerate(count) {
+    const data = loadData();
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+
+    const firstNames = ['James','Maria','David','Ana','Michael','Sophie','Carlos','Emma','Wei','Fatima','Olga','Kenji','Aisha','Liam','Yuki','Hannah','Lucas','Zara','Ethan','Mia'];
+    const lastNames = ['Smith','Garcia','Johnson','Martinez','Brown','Lee','Wilson','Silva','Kim','Patel','Mueller','Chen','Rossi','Ivanov','Sato','Johansson','Okafor','Dubois','Andersen','Kowalski'];
+    const routes = [
+        { origin: 'New York, USA', dest: 'London, UK' },
+        { origin: 'Los Angeles, USA', dest: 'Tokyo, JP' },
+        { origin: 'Frankfurt, DE', dest: 'Shanghai, CN' },
+        { origin: 'Dubai, AE', dest: 'Sydney, AU' },
+        { origin: 'Singapore, SG', dest: 'Mumbai, IN' },
+        { origin: 'Paris, FR', dest: 'Toronto, CA' },
+        { origin: 'Amsterdam, NL', dest: 'Sao Paulo, BR' },
+        { origin: 'Hong Kong, HK', dest: 'Seoul, KR' },
+        { origin: 'Madrid, ES', dest: 'Buenos Aires, AR' },
+        { origin: 'Chicago, USA', dest: 'Mexico City, MX' },
+    ];
+    const statuses = ['pending', 'processing', 'in_transit', 'delivered'];
+    const statusLabels = {
+        pending: 'Shipment Created',
+        processing: 'Processing',
+        in_transit: 'In Transit',
+        delivered: 'Delivered'
+    };
+
+    let added = 0;
+    for (let i = 0; i < count; i++) {
+        let tn;
+        let attempts = 0;
+        do {
+            const year = 2024 + Math.floor(Math.random() * 3);
+            const num = String(Math.floor(Math.random() * 999999)).padStart(6, '0');
+            tn = `ET-${year}-${num}`;
+            attempts++;
+        } while (data.find(s => s.tn === tn) && attempts < 50);
+
+        if (data.find(s => s.tn === tn)) continue;
+
+        const name = firstNames[Math.floor(Math.random() * firstNames.length)] + ' ' + lastNames[Math.floor(Math.random() * lastNames.length)];
+        const route = routes[Math.floor(Math.random() * routes.length)];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
+        const events = [{ date: dateStr, title: statusLabels[status], desc: 'Package created in system', loc: route.origin }];
+
+        // Add a few more events for realism
+        if (status === 'delivered' || status === 'in_transit') {
+            const prevDate = new Date(now);
+            prevDate.setDate(prevDate.getDate() - 2);
+            const p = n => String(n).padStart(2, '0');
+            events.unshift({
+                date: `${prevDate.getFullYear()}-${p(prevDate.getMonth()+1)}-${p(prevDate.getDate())} ${p(prevDate.getHours())}:${p(prevDate.getMinutes())}`,
+                title: 'Package Received',
+                desc: 'Shipping label created',
+                loc: route.origin
+            });
+        }
+        if (status === 'delivered') {
+            const midDate = new Date(now);
+            midDate.setDate(midDate.getDate() - 1);
+            const p = n => String(n).padStart(2, '0');
+            events.unshift({
+                date: `${midDate.getFullYear()}-${p(midDate.getMonth()+1)}-${p(midDate.getDate())} ${p(midDate.getHours())}:${p(midDate.getMinutes())}`,
+                title: 'Departed from Transit Hub',
+                desc: 'In transit to destination',
+                loc: route.dest
+            });
+        }
+
+        data.push({
+            tn, recipient: name, origin: route.origin,
+            destination: route.dest, status,
+            events
+        });
+        added++;
+    }
+
+    saveData(data);
+    renderAdminTable();
+    alert(`✅ ${added} shipments generated successfully!`);
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function showTab(tab) {
+    document.querySelectorAll('nav ul li').forEach(li => li.classList.remove('active'));
+    document.getElementById('tab-track').classList.add('hidden');
+    document.getElementById('tab-admin').classList.add('hidden');
+
+    if (tab === 'track') {
+        document.getElementById('tab-track').classList.remove('hidden');
+        document.querySelector('nav ul li:nth-child(1)').classList.add('active');
+    } else {
+        document.getElementById('tab-admin').classList.remove('hidden');
+        document.querySelector('nav ul li:nth-child(2)').classList.add('active');
+
+        const msg = document.getElementById('admin-msg');
+        if (!isAdminSetupComplete()) {
+            msg.className = 'info';
+            msg.textContent = '🔐 First-time setup: enter any username & password to create your admin account.';
+        } else {
+            msg.className = 'info';
+            msg.textContent = '';
+        }
+    }
+}
+
+function fillExample() {
+    document.getElementById('track-input').value = 'ET-2024-001234';
+    trackShipment();
+}
+
+function fillExample2() {
+    document.getElementById('track-input').value = 'ET-2025-005678';
+    trackShipment();
+}
+
+document.getElementById('track-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') trackShipment();
+});
+document.getElementById('admin-pass').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') adminLogin();
+});
+document.getElementById('admin-user').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') adminLogin();
+});
+</script>
+</body>
+</html>
